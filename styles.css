@@ -172,6 +172,13 @@ a.ct-item:hover .ct-v{ color:var(--accent-text); text-decoration:underline; text
 .field input,.field textarea{ font:inherit; background:var(--canvas); border:1.5px solid transparent; border-radius:var(--r-md); padding:12px 14px; color:var(--ink); resize:vertical; }
 .field input:focus,.field textarea:focus{ outline:none; border-color:var(--violet); background:var(--paper); }
 .form .btn{ width:100%; }
+.form .btn:disabled{ opacity:.7; cursor:wait; }
+.hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
+.form-status{ margin:14px 0 0; font-weight:600; font-size:.95rem; min-height:1.4em; }
+.form-status.ok{ color:#1a8f5c; }
+.form-status.err{ color:#d3365a; }
+:root[data-theme="dark"] .form-status.ok{ color:#4fd8a0; }
+:root[data-theme="dark"] .form-status.err{ color:#ff8da6; }
 @media (max-width:860px){ .contact-grid{ grid-template-columns:1fr; } }
 @media (max-width:560px){ .field-row{ grid-template-columns:1fr; gap:0; } }
 
