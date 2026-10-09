@@ -96,12 +96,32 @@
 
   var form = document.getElementById('contact-form');
   if(form){
-    form.addEventListener('submit', function(e){
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var statusEl = document.getElementById('formStatus');
+    function setStatus(msg, kind){ statusEl.textContent = msg; statusEl.className = 'form-status' + (kind ? ' ' + kind : ''); }
+    form.addEventListener('submit', async function(e){
       e.preventDefault();
-      var name = form.name.value.trim(), email = form.email.value.trim(), msg = form.message.value.trim();
-      var subject = encodeURIComponent(form.subject.value.trim() || ('Portfolio message from ' + (name || 'someone')));
-      var body = encodeURIComponent(msg + '\n\n— ' + name + (email ? ' (' + email + ')' : ''));
-      window.location.href = 'mailto:charishartiaga@gmail.com?subject=' + subject + '&body=' + body;
+      var formData = new FormData(form);
+      if(!formData.get('subject')) formData.set('subject', 'Portfolio message from ' + (formData.get('name') || 'someone'));
+      var originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Sending...';
+      submitBtn.disabled = true;
+      setStatus('', '');
+      try{
+        var response = await fetch('https://api.web3forms.com/submit', { method:'POST', body:formData });
+        var data = await response.json();
+        if(response.ok && data.success !== false){
+          setStatus('Success! Your message has been sent.', 'ok');
+          form.reset();
+        }else{
+          setStatus('Error: ' + (data.message || 'Could not send your message.'), 'err');
+        }
+      }catch(err){
+        setStatus('Something went wrong. Please try again.', 'err');
+      }finally{
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
     });
   }
 })();
