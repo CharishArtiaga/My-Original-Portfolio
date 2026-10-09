@@ -168,3 +168,128 @@
     if(mq.addEventListener) mq.addEventListener('change', onChange); else if(mq.addListener) mq.addListener(onChange);
   }
 })();
+
+
+/* motion: scroll progress, reveals, filter transitions */
+(function(){
+  var header = document.querySelector('header');
+  var bar = document.createElement('div');
+  bar.className = 'progress';
+  bar.setAttribute('aria-hidden', 'true');
+  header.appendChild(bar);
+
+  var ticking = false;
+  function onScroll(){
+    if(ticking) return;
+    ticking = true;
+    requestAnimationFrame(function(){
+      var el = document.documentElement;
+      var max = el.scrollHeight - el.clientHeight;
+      bar.style.setProperty('--p', max > 0 ? Math.min(1, window.scrollY / max) : 0);
+      header.classList.toggle('scrolled', window.scrollY > 8);
+      ticking = false;
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive:true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce || !('IntersectionObserver' in window)) return;
+
+  /* re-run the card entrance whenever a filter is chosen */
+  document.querySelectorAll('.pill').forEach(function(pill){
+    pill.addEventListener('click', function(){
+      var i = 0;
+      document.querySelectorAll('#workGrid .piece').forEach(function(card){
+        if(card.style.display === 'none') return;
+        card.classList.add('reveal', 'in');
+        card.classList.remove('shuffle');
+        void card.offsetWidth;
+        card.style.setProperty('--d', (i++ * 90) + 'ms');
+        card.classList.add('shuffle');
+      });
+    });
+  });
+
+  var targets = ['.head > *', '.filters', '.piece', '.about-grid p', '.skillbox', '.edu-row',
+                 '.cert', '.ct-list > *', '.form', '.footer-grid > *'];
+  var seen = typeof Map === 'function' ? new Map() : null;
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting) return;
+      en.target.classList.add('in');
+      io.unobserve(en.target);
+    });
+  }, { threshold:0.12, rootMargin:'0px 0px -6% 0px' });
+
+  targets.forEach(function(sel){
+    document.querySelectorAll(sel).forEach(function(el){
+      if(el.classList.contains('reveal')) return;
+      var n = seen ? (seen.get(el.parentNode) || 0) : 0;
+      if(seen) seen.set(el.parentNode, n + 1);
+      el.style.setProperty('--d', Math.min(n, 4) * 90 + 'ms');
+      el.classList.add('reveal');
+      io.observe(el);
+    });
+  });
+})();
+
+
+/* custom cursor */
+(function(){
+  if(!window.matchMedia) return;
+  if(!matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  var root = document.documentElement;
+  var dot = document.createElement('div'); dot.className = 'cur-dot';
+  var ring = document.createElement('div'); ring.className = 'cur-ring';
+  dot.setAttribute('aria-hidden','true'); ring.setAttribute('aria-hidden','true');
+  /* purple light trail: a chain of soft orbs, each easing toward the one ahead */
+  var TRAIL = 12, glows = [], gp = [];
+  for(var i = 0; i < TRAIL; i++){
+    var g = document.createElement('div');
+    g.className = 'cur-glow';
+    g.setAttribute('aria-hidden','true');
+    var t01 = i / (TRAIL - 1);
+    g.style.setProperty('--s', Math.round(190 - t01 * 110) + 'px');   /* big at the tail, small near the cursor */
+    g.style.setProperty('--o', (0.24 + (1 - t01) * 0.42).toFixed(2)); /* brighter near the cursor */
+    document.body.appendChild(g);
+    glows.push(g); gp.push({ x:-300, y:-300 });
+  }
+  document.body.appendChild(ring); document.body.appendChild(dot);
+
+  var x = -100, y = -100, rx = -100, ry = -100, shown = false, raf = null;
+  var HOVER = 'a, button, [data-nav], .piece, .cert-btn, .pill, summary, label, select';
+  var TEXT = 'input, textarea';
+
+  function loop(){
+    rx += (x - rx) * 0.18; ry += (y - ry) * 0.18;
+    ring.style.transform = 'translate3d(' + rx + 'px,' + ry + 'px,0)';
+    var moving = Math.abs(x - rx) > 0.1 || Math.abs(y - ry) > 0.1;
+    var tx = x, ty = y;
+    for(var i = 0; i < TRAIL; i++){
+      var p = gp[i], k = 0.30 - i * 0.022; /* later orbs lag more */
+      p.x += (tx - p.x) * k; p.y += (ty - p.y) * k;
+      glows[i].style.transform = 'translate3d(' + p.x + 'px,' + p.y + 'px,0)';
+      if(Math.abs(tx - p.x) > 0.1 || Math.abs(ty - p.y) > 0.1) moving = true;
+      tx = p.x; ty = p.y;
+    }
+    raf = moving ? requestAnimationFrame(loop) : null;
+  }
+  document.addEventListener('mousemove', function(e){
+    x = e.clientX; y = e.clientY;
+    dot.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0)';
+    if(!shown){ shown = true; rx = x; ry = y; gp.forEach(function(p){ p.x = x; p.y = y; }); root.classList.add('has-cursor'); }
+    root.classList.remove('cur-out');
+    var t = e.target.closest ? e.target : null;
+    root.classList.toggle('cur-hover', !!(t && t.closest(HOVER)));
+    root.classList.toggle('cur-text', !!(t && t.closest(TEXT)));
+    if(!raf) raf = requestAnimationFrame(loop);
+  }, { passive:true });
+  document.addEventListener('mousedown', function(){ root.classList.add('cur-down'); });
+  document.addEventListener('mouseup', function(){ root.classList.remove('cur-down'); });
+  document.documentElement.addEventListener('mouseleave', function(){ root.classList.add('cur-out'); });
+  document.documentElement.addEventListener('mouseenter', function(){ root.classList.remove('cur-out'); });
+})();
