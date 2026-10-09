@@ -105,3 +105,46 @@
     });
   }
 })();
+
+/* light / dark theme */
+(function(){
+  var root = document.documentElement;
+  var btn = document.getElementById('themeToggle');
+  var meta = document.getElementById('metaTheme');
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  var timer;
+
+  function saved(){ try{ var t = localStorage.getItem('theme'); return (t==='light'||t==='dark') ? t : null; }catch(e){ return null; } }
+  function save(t){ try{ localStorage.setItem('theme', t); }catch(e){} }
+
+  function apply(t, animate){
+    if(animate){
+      root.classList.add('theme-anim');
+      clearTimeout(timer);
+      timer = setTimeout(function(){ root.classList.remove('theme-anim'); }, 350);
+    }
+    root.setAttribute('data-theme', t);
+    if(meta) meta.setAttribute('content', t==='dark' ? '#130e22' : '#f3f1f8');
+    if(btn){
+      var label = t==='dark' ? 'Switch to light mode' : 'Switch to dark mode';
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('title', label);
+    }
+  }
+
+  apply(root.getAttribute('data-theme') || saved() || (mq && mq.matches ? 'dark' : 'light'), false);
+
+  if(btn){
+    btn.addEventListener('click', function(){
+      var next = root.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+      apply(next, true);
+      save(next);
+    });
+  }
+
+  /* follow the system setting until the visitor picks a theme themselves */
+  if(mq){
+    var onChange = function(e){ if(!saved()) apply(e.matches ? 'dark' : 'light', true); };
+    if(mq.addEventListener) mq.addEventListener('change', onChange); else if(mq.addListener) mq.addListener(onChange);
+  }
+})();
